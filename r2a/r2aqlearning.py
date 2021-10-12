@@ -18,6 +18,9 @@ from r2a.ir2a import IR2A
 
 class R2AQLearning(IR2A):
 
+	#####################################################
+	# Realizacao das funcoes abstratas herdadas de IR2A #
+	#####################################################
     def __init__(self, id):
         IR2A.__init__(self, id)
         self.parsed_mpd = ''
@@ -46,3 +49,49 @@ class R2AQLearning(IR2A):
 
     def finalization(self):
         pass
+		
+	##############################################################
+	#########              Reward Functions              #########
+	##############################################################
+	
+	############# Constants used to define the reward ############
+	# Wieghts C1-C4 - the values ​​used were obtained in the article
+	C1 = 2
+	C2 = 1
+	C3 = 4
+	C4 = 3
+	# Number of quality levels
+	N = 20 # obter do arquivo XML
+	
+	# R_quality
+	def reward_quality(self):
+		r_quality = (self.qi-1)/(N-1)*2 - 1 #formula do artigo
+		return r_quality
+		
+	# R_oscillation
+	def reward_oscillation(self):
+		# vamos precisar de um vetor de qualidades antigas para
+		# definir a profundidade e largura da oscilacao - quantos
+		# valores precisamos, sera?
+		r_oscillation = 0 #definir ainda
+		return r_oscillation
+		
+	# R_bufferfilling
+	def reward_bufferfilling(self):
+		r_bufferfilling = 0 #definir ainda
+		return r_bufferfilling
+	
+	# R_bufferchange
+	def reward_bufferchange(self):
+		r_bufferchange = 0 #definir ainda
+		return r_bufferchange
+		
+	# R - total reward
+	def total_reward(self):
+		r_quality = self.reward_quality()
+		r_oscillation = self.reward_oscillation()
+		r_bufferfilling = self.reward_bufferfilling()
+		r_bufferchange = self.reward_bufferchange()
+		
+		reward = C1*r_quality + C2*r_oscillation + C3*r_bufferfilling + C4*r_bufferchange
+		return reward
