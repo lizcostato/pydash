@@ -18,9 +18,9 @@ from r2a.ir2a import IR2A
 
 class R2AQLearning(IR2A):
 
-	#####################################################
-	# Realizacao das funcoes abstratas herdadas de IR2A #
-	#####################################################
+	##############################################################
+	##### Realizacao das funcoes abstratas herdadas de IR2A  #####
+	##############################################################
     def __init__(self, id):
         IR2A.__init__(self, id)
         self.parsed_mpd = ''
@@ -61,7 +61,7 @@ class R2AQLearning(IR2A):
 	C3 = 4
 	C4 = 3
 	# Number of quality levels
-	N = 20 # obter do arquivo XML
+	N = 20 # obter do arquivo XML (ainda ver como)
 	
 	# R_quality
 	def reward_quality(self):
@@ -73,6 +73,11 @@ class R2AQLearning(IR2A):
 		# vamos precisar de um vetor de qualidades antigas para
 		# definir a profundidade e largura da oscilacao - quantos
 		# valores precisamos, sera?
+		
+		# arquivo player.py parece ter informacoes do buffer:
+		# self.max_buffer_size = int(config_parser.get_parameter('max_buffer_size'))
+		# self.playback_buffer_size = OutVector() seria o quao cheio esta o buffer?
+		#		nao sei o que seria esse OutVector
 		r_oscillation = 0 #definir ainda
 		return r_oscillation
 		
