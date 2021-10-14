@@ -15,6 +15,8 @@ In this algorithm the quality choice is always the same.
 from player.parser import *
 from r2a.ir2a import IR2A
 
+import numpy as np #usaremos para random
+
 
 class R2AQLearning(IR2A):
 
@@ -62,12 +64,42 @@ class R2AQLearning(IR2A):
 	##############################################################
 	
 	# Como decidir entre exploration e exploitation
+	# Pelos resultados do artigo, parece melhor usar o VDBE-Softmax
+	# maaaas, eu usaria o e-greedy pq é bem mais simples de 
+	# implementar, e o prof disse q n precisa ser tao fiel ao artigo
 	
-	######### Exploration ########################################
+	# Achei possivel, mas complicadinho implementar o Softmax ou o
+	# VDBE-Softmax: 
+	# http://www.tokic.com/www/tokicm/publikationen/papers/KI2011.pdf
+	# Judeu implementou Softmax, podemos ver pelo dele tmb
+	
+	####################### Using ε-greedy #######################
+	# Exploration rate (ε)
+	epsilon = 1 #Initially, only exploration is desired
+				# N sei em que momento atualiza kkkkkkk
+				# Poderiamos deixar por um numero específico de 
+				# iteracoes epsilon = 1 e depois deixar em outro
+				# valor fixo
+	random_number = np.random.random()
+    if random_number < epsilon:
+      #exploration
+    else:
+      #exploitation
+	
+	######################## Exploration #########################
+	
+	############ Constants used to update the Q-value ############
+	# The values ​​used were obtained in the article
+	# learning rate (α)
+	alfa = 0.3
+	# discount factor (γ)
+	gama = 0.95
+	
 	# seleciona aleatoriamente o próximo estado e atualiza a 
-	# tabela Q 
+	# tabela Q com o resultado de Q(s, a) = Q(s, a) + α [r + γ
+	# max_b(s',b) - Q(s,a)] - Bellman Equation
 	
-	######### Exploitation #######################################
+	######################## Exploitation ########################
 	# so usa a tabela Q
 		
 	##############################################################
