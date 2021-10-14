@@ -51,6 +51,26 @@ class R2AQLearning(IR2A):
         pass
 		
 	##############################################################
+	#########              State definiion               #########
+	##############################################################
+	
+	# Ainda ver oq consideraremos na definicao do estado
+	# Aqui vai ser basicamente inicializar uma matriz
+	
+	##############################################################
+	#########             Exploration Policy             #########
+	##############################################################
+	
+	# Como decidir entre exploration e exploitation
+	
+	######### Exploration ########################################
+	# seleciona aleatoriamente o próximo estado e atualiza a 
+	# tabela Q 
+	
+	######### Exploitation #######################################
+	# so usa a tabela Q
+		
+	##############################################################
 	#########              Reward Functions              #########
 	##############################################################
 	
