@@ -55,6 +55,9 @@ class R2AQLearning(IR2A):
         self.qi = self.parsed_mpd.get_qi()
         self.N = len(self.qi)
 		
+		# so consigo criar a tabela quando souber quantas qualidades tem
+		self.create_q_table()
+		
         t = time.time() - self.request_time #diferenca de tempo
         self.bandwidth = msg.get_bit_length()/t #bits/s
         print('Bandwidth: ', self.bandwidth)
@@ -92,6 +95,69 @@ class R2AQLearning(IR2A):
 
     def finalization(self):
         pass
+		
+	##############################################################
+	#########                   Q-table                  #########
+	##############################################################
+	#						Actions (choose qi[x])
+	#	States		| qi[0] qi[1] qi[2] qi[3] ... qi[N-1] qi[N]
+	# qi[0], BW = L |
+	# qi[1], BW = L |
+	# qi[2], BW = L |
+	# qi[3], BW = L |
+	# ...           |
+	# qi[N], BW = M |              Q-values
+	# qi[0], BW = M |
+	# qi[1], BW = M |
+	# qi[2], BW = M |
+	# ...           |
+	# qi[N], BW = H |
+	
+	# Knowing how many states exist, initialize the Q-table with 0
+    def create_q_table(self):
+        self.q_table = 
+	
+	##############################################################
+	#########              Reward Functions              #########
+	##############################################################
+		
+	# R_quality
+    def reward_quality(self):
+        r_quality = (self.qi-1)/(self.N-1)*2 - 1 #formula do artigo
+        return r_quality
+		
+	# R_oscillation
+    def reward_oscillation(self):
+		# vamos precisar de um vetor de qualidades antigas para
+		# definir a profundidade e largura da oscilacao - quantos
+		# valores precisamos, sera?
+		
+		# arquivo player.py parece ter informacoes do buffer:
+		# self.max_buffer_size = int(config_parser.get_parameter('max_buffer_size'))
+		# self.playback_buffer_size = OutVector() seria o quao cheio esta o buffer?
+		#		nao sei o que seria esse OutVector
+        r_oscillation = 0 #definir ainda
+        return r_oscillation
+		
+	# R_bufferfilling
+    def reward_bufferfilling(self):
+        r_bufferfilling = 0 #definir ainda
+        return r_bufferfilling
+	
+	# R_bufferchange
+    def reward_bufferchange(self):
+        r_bufferchange = 0 #definir ainda
+        return r_bufferchange
+		
+	# R - total reward
+    def total_reward(self):
+        r_quality = self.reward_quality()
+        r_oscillation = self.reward_oscillation()
+        r_bufferfilling = self.reward_bufferfilling()
+        r_bufferchange = self.reward_bufferchange()
+		
+        reward = self.C1*r_quality + self.C2*r_oscillation + self.C3*r_bufferfilling + self.C4*r_bufferchange
+        return reward
 	
 	##############################################################
 	#########             Exploration Policy             #########
@@ -136,45 +202,3 @@ class R2AQLearning(IR2A):
     def exploration(self):
         print('em exploration')
 	# so usa a tabela Q
-		
-	##############################################################
-	#########              Reward Functions              #########
-	##############################################################
-		
-	# R_quality
-    def reward_quality(self):
-        r_quality = (self.qi-1)/(self.N-1)*2 - 1 #formula do artigo
-        return r_quality
-		
-	# R_oscillation
-    def reward_oscillation(self):
-		# vamos precisar de um vetor de qualidades antigas para
-		# definir a profundidade e largura da oscilacao - quantos
-		# valores precisamos, sera?
-		
-		# arquivo player.py parece ter informacoes do buffer:
-		# self.max_buffer_size = int(config_parser.get_parameter('max_buffer_size'))
-		# self.playback_buffer_size = OutVector() seria o quao cheio esta o buffer?
-		#		nao sei o que seria esse OutVector
-        r_oscillation = 0 #definir ainda
-        return r_oscillation
-		
-	# R_bufferfilling
-    def reward_bufferfilling(self):
-        r_bufferfilling = 0 #definir ainda
-        return r_bufferfilling
-	
-	# R_bufferchange
-    def reward_bufferchange(self):
-        r_bufferchange = 0 #definir ainda
-        return r_bufferchange
-		
-	# R - total reward
-    def total_reward(self):
-        r_quality = self.reward_quality()
-        r_oscillation = self.reward_oscillation()
-        r_bufferfilling = self.reward_bufferfilling()
-        r_bufferchange = self.reward_bufferchange()
-		
-        reward = self.C1*r_quality + self.C2*r_oscillation + self.C3*r_bufferfilling + self.C4*r_bufferchange
-        return reward
