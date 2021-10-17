@@ -17,6 +17,7 @@ from r2a.ir2a import IR2A
 
 from collections import namedtuple
 import numpy as np #usaremos para random
+import time
 
 class R2AQLearning(IR2A):
 
@@ -30,6 +31,7 @@ class R2AQLearning(IR2A):
 		#number of quality levels 
 		# value obtained in handle_xml_response()
         self.N = 0 
+        self.request_time = 0
 
 	##############################################################
 	#########              State definiion               #########
@@ -48,6 +50,7 @@ class R2AQLearning(IR2A):
         self.C4 = 3
 
     def handle_xml_request(self, msg):
+        self.request_time = time.time()
         self.send_down(msg)
 
     def handle_xml_response(self, msg):
@@ -55,17 +58,32 @@ class R2AQLearning(IR2A):
         self.parsed_mpd = parse_mpd(msg.get_payload())
         self.qi = self.parsed_mpd.get_qi()
         self.N = len(self.qi)
+		
+        t = time.time() - self.request_time #diferenca de tempo
+        self.bandwidth = msg.get_bit_length()/t #bits/s
+        print('Bandwidth: ', self.bandwidth)
+		# mantem a qualidade (que ainda sera alterada)
+		# e atualiza o bandwidth
+        self.satate = self.States(self.qi[19],self.bandwidth)
+        print('State: ', self.state)
+		
         self.send_up(msg)
 
     def handle_segment_size_request(self, msg):
+	
+        self.request_time = time.time()
+	
         # time to define the segment quality choose to make the request
         msg.add_quality_id(self.qi[19]) #Aqui que colocamos a qualidade
         self.send_down(msg)
 
     def handle_segment_size_response(self, msg):
-		# Mudar quando comecar a enviar outra qualidade pro 
-		# msg.add_quality_id(self.qi[19])
-        self.state = self.States(self.qi[19], 0) 
+        t = time.time() - self.request_time #diferenca de tempo
+        self.bandwidth = msg.get_bit_length()/t #bits/s
+        print('Bandwidth: ', self.bandwidth)
+		# mantem a qualidade (que ainda sera alterada)
+		# e atualiza o bandwidth
+        self.satate = self.States(self.state[0],self.bandwidth)
         print('State: ', self.state)
         #calcular recomensa
         #rodar o q-learning
