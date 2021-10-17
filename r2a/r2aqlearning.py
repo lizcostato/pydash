@@ -27,6 +27,9 @@ class R2AQLearning(IR2A):
         IR2A.__init__(self, id)
         self.parsed_mpd = ''
         self.qi = []
+        self.N = 0 #number of quality levels
+		
+
 
     def handle_xml_request(self, msg):
         self.send_down(msg)
@@ -35,7 +38,7 @@ class R2AQLearning(IR2A):
         # getting qi list
         self.parsed_mpd = parse_mpd(msg.get_payload())
         self.qi = self.parsed_mpd.get_qi()
-
+        self.N = len(self.qi)
         self.send_up(msg)
 
     def handle_segment_size_request(self, msg):
@@ -113,7 +116,7 @@ class R2AQLearning(IR2A):
 	C3 = 4
 	C4 = 3
 	# Number of quality levels
-	N = 20 # obter do arquivo XML (ainda ver como)
+	N = 20 # obter do arquivo XML (ainda ver como) ---> já fiz la em cima, usar self.N
 	
 	# R_quality
 	def reward_quality(self):
