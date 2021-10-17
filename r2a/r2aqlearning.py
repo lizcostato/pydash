@@ -15,8 +15,8 @@ In this algorithm the quality choice is always the same.
 from player.parser import *
 from r2a.ir2a import IR2A
 
+from collections import namedtuple
 import numpy as np #usaremos para random
-
 
 class R2AQLearning(IR2A):
 
@@ -27,9 +27,26 @@ class R2AQLearning(IR2A):
         IR2A.__init__(self, id)
         self.parsed_mpd = ''
         self.qi = []
-        self.N = 0 #number of quality levels
-		
+		#number of quality levels 
+		# value obtained in handle_xml_response()
+        self.N = 0 
 
+	##############################################################
+	#########              State definiion               #########
+	##############################################################
+	# Ainda ver oq consideraremos na definicao do estado
+	# Aqui vai ser basicamente inicializar uma matriz
+		#two parameters: current quality and bandwidth
+		#Defini como tupla pq será sempre o mesmo nº de parâmetros: 2
+        States = namedtuple('States', ['Quality', 'Bandwidth'])
+        self.state = States(Quality = 0, Bandwidth = 0)
+	
+	############# Constants used to define the reward ############
+	# Wieghts C1-C4 - the values ​​used were obtained in the article
+        self.C1 = 2
+        self.C2 = 1
+        self.C3 = 4
+        self.C4 = 3
 
     def handle_xml_request(self, msg):
         self.send_down(msg)
@@ -43,10 +60,12 @@ class R2AQLearning(IR2A):
 
     def handle_segment_size_request(self, msg):
         # time to define the segment quality choose to make the request
-        msg.add_quality_id(self.qi[19])
+        msg.add_quality_id(self.qi[19]) #Aqui que colocamos a qualidade
         self.send_down(msg)
 
     def handle_segment_size_response(self, msg):
+        #calcular recomensa
+        #rodar o q-learning
         self.send_up(msg)
 
     def initialize(self):
@@ -54,13 +73,6 @@ class R2AQLearning(IR2A):
 
     def finalization(self):
         pass
-		
-	##############################################################
-	#########              State definiion               #########
-	##############################################################
-	
-	# Ainda ver oq consideraremos na definicao do estado
-	# Aqui vai ser basicamente inicializar uma matriz
 	
 	##############################################################
 	#########             Exploration Policy             #########
@@ -77,54 +89,46 @@ class R2AQLearning(IR2A):
 	# Judeu implementou Softmax, podemos ver pelo dele tmb
 	
 	####################### Using ε-greedy #######################
-	# Exploration rate (ε)
-	epsilon = 1 #Initially, only exploration is desired
-				# N sei em que momento atualiza kkkkkkk
-				# Poderiamos deixar por um numero específico de 
-				# iteracoes epsilon = 1 e depois deixar em outro
-				# valor fixo
-	random_number = np.random.random()
-    if random_number < epsilon:
-      #exploration
-    else:
-      #exploitation
+    def e_greedy(self):
+		# Exploration rate (ε)
+        epsilon = 0.05
+        random_number = np.random.random()
+        if random_number < epsilon:
+            self.exploration()
+        else:
+            self.exploitation()
 	
 	######################## Exploration #########################
 	
+    def exploration(self):
 	############ Constants used to update the Q-value ############
-	# The values ​​used were obtained in the article
-	# learning rate (α)
-	alfa = 0.3
-	# discount factor (γ)
-	gama = 0.95
+		# The values ​​used were obtained in the article
+		# learning rate (α)
+        alfa = 0.3
+		# discount factor (γ)
+        gama = 0.95
 	
 	# seleciona aleatoriamente o próximo estado e atualiza a 
 	# tabela Q com o resultado de Q(s, a) = Q(s, a) + α [r + γ
 	# max_b(s',b) - Q(s,a)] - Bellman Equation
 	
 	######################## Exploitation ########################
+	
+    def exploration(self):
+        	print('em exploration')
 	# so usa a tabela Q
 		
 	##############################################################
 	#########              Reward Functions              #########
 	##############################################################
-	
-	############# Constants used to define the reward ############
-	# Wieghts C1-C4 - the values ​​used were obtained in the article
-	C1 = 2
-	C2 = 1
-	C3 = 4
-	C4 = 3
-	# Number of quality levels
-	N = 20 # obter do arquivo XML (ainda ver como) ---> já fiz la em cima, usar self.N
-	
+		
 	# R_quality
-	def reward_quality(self):
-		r_quality = (self.qi-1)/(N-1)*2 - 1 #formula do artigo
-		return r_quality
+    def reward_quality(self):
+        r_quality = (self.qi-1)/(self.N-1)*2 - 1 #formula do artigo
+        return r_quality
 		
 	# R_oscillation
-	def reward_oscillation(self):
+    def reward_oscillation(self):
 		# vamos precisar de um vetor de qualidades antigas para
 		# definir a profundidade e largura da oscilacao - quantos
 		# valores precisamos, sera?
@@ -133,25 +137,25 @@ class R2AQLearning(IR2A):
 		# self.max_buffer_size = int(config_parser.get_parameter('max_buffer_size'))
 		# self.playback_buffer_size = OutVector() seria o quao cheio esta o buffer?
 		#		nao sei o que seria esse OutVector
-		r_oscillation = 0 #definir ainda
-		return r_oscillation
+        r_oscillation = 0 #definir ainda
+        return r_oscillation
 		
 	# R_bufferfilling
-	def reward_bufferfilling(self):
-		r_bufferfilling = 0 #definir ainda
-		return r_bufferfilling
+    def reward_bufferfilling(self):
+        r_bufferfilling = 0 #definir ainda
+        return r_bufferfilling
 	
 	# R_bufferchange
-	def reward_bufferchange(self):
-		r_bufferchange = 0 #definir ainda
-		return r_bufferchange
+    def reward_bufferchange(self):
+        r_bufferchange = 0 #definir ainda
+        return r_bufferchange
 		
 	# R - total reward
-	def total_reward(self):
-		r_quality = self.reward_quality()
-		r_oscillation = self.reward_oscillation()
-		r_bufferfilling = self.reward_bufferfilling()
-		r_bufferchange = self.reward_bufferchange()
+    def total_reward(self):
+        r_quality = self.reward_quality()
+        r_oscillation = self.reward_oscillation()
+        r_bufferfilling = self.reward_bufferfilling()
+        r_bufferchange = self.reward_bufferchange()
 		
-		reward = C1*r_quality + C2*r_oscillation + C3*r_bufferfilling + C4*r_bufferchange
-		return reward
+        reward = self.C1*r_quality + self.C2*r_oscillation + self.C3*r_bufferfilling + self.C4*r_bufferchange
+        return reward
