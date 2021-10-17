@@ -34,12 +34,11 @@ class R2AQLearning(IR2A):
 	##############################################################
 	#########              State definiion               #########
 	##############################################################
-	# Ainda ver oq consideraremos na definicao do estado
-	# Aqui vai ser basicamente inicializar uma matriz
-		#two parameters: current quality and bandwidth
-		#Defini como tupla pq será sempre o mesmo nº de parâmetros: 2
-        States = namedtuple('States', ['Quality', 'Bandwidth'])
-        self.state = States(Quality = 0, Bandwidth = 0)
+	#two parameters: current quality and bandwidth
+	#Defini como tupla pq será sempre o mesmo nº de parâmetros: 2
+	#Segui https://blog.betrybe.com/tecnologia/tuplas-em-python/
+        self.States = namedtuple('States', ['Quality', 'Bandwidth'])
+        self.state = self.States(0,0)
 	
 	############# Constants used to define the reward ############
 	# Wieghts C1-C4 - the values ​​used were obtained in the article
@@ -64,6 +63,10 @@ class R2AQLearning(IR2A):
         self.send_down(msg)
 
     def handle_segment_size_response(self, msg):
+		# Mudar quando comecar a enviar outra qualidade pro 
+		# msg.add_quality_id(self.qi[19])
+        self.state = self.States(self.qi[19], 0) 
+        print('State: ', self.state)
         #calcular recomensa
         #rodar o q-learning
         self.send_up(msg)
@@ -115,7 +118,7 @@ class R2AQLearning(IR2A):
 	######################## Exploitation ########################
 	
     def exploration(self):
-        	print('em exploration')
+        print('em exploration')
 	# so usa a tabela Q
 		
 	##############################################################
