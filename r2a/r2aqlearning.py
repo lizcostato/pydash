@@ -28,19 +28,15 @@ class R2AQLearning(IR2A):
         IR2A.__init__(self, id)
         self.parsed_mpd = ''
         self.qi = []
-		#number of quality levels 
-		# value obtained in handle_xml_response()
+	# number of quality levels 
+	# value obtained in handle_xml_response()
         self.N = 0 
         self.request_time = 0
 
-	##############################################################
-	#########              State definiion               #########
-	##############################################################
-	#two parameters: current quality and bandwidth
-	#Defini como tupla pq será sempre o mesmo nº de parâmetros: 2
-	#Segui https://blog.betrybe.com/tecnologia/tuplas-em-python/
-        self.States = namedtuple('States', ['Quality', 'Bandwidth'])
-        self.state = self.States(0,0)
+	###################### State definiion #######################
+	# first argument: current quality
+	# second argument: current bandwidth
+        self.state = [0,0]
 	
 	############# Constants used to define the reward ############
 	# Wieghts C1-C4 - the values ​​used were obtained in the article
@@ -62,9 +58,8 @@ class R2AQLearning(IR2A):
         t = time.time() - self.request_time #diferenca de tempo
         self.bandwidth = msg.get_bit_length()/t #bits/s
         print('Bandwidth: ', self.bandwidth)
-		# mantem a qualidade (que ainda sera alterada)
-		# e atualiza o bandwidth
-        self.satate = self.States(self.qi[19],self.bandwidth)
+		# mantem a qualidade e atualiza o bandwidth
+        self.state[1] = self.bandwidth
         print('State: ', self.state)
 		
         self.send_up(msg)
@@ -74,6 +69,7 @@ class R2AQLearning(IR2A):
         self.request_time = time.time()
 	
         # time to define the segment quality choose to make the request
+        self.state[0] = self.qi[19] #Alterar depois
         msg.add_quality_id(self.qi[19]) #Aqui que colocamos a qualidade
         self.send_down(msg)
 
@@ -81,12 +77,14 @@ class R2AQLearning(IR2A):
         t = time.time() - self.request_time #diferenca de tempo
         self.bandwidth = msg.get_bit_length()/t #bits/s
         print('Bandwidth: ', self.bandwidth)
+		
+		#calcular recomensa
+        #rodar o q-learning
+		
 		# mantem a qualidade (que ainda sera alterada)
 		# e atualiza o bandwidth
-        self.satate = self.States(self.state[0],self.bandwidth)
+        self.state[1] = self.bandwidth
         print('State: ', self.state)
-        #calcular recomensa
-        #rodar o q-learning
         self.send_up(msg)
 
     def initialize(self):
