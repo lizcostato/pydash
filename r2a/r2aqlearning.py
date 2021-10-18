@@ -33,6 +33,11 @@ class R2AQLearning(IR2A):
         self.N = 0 
         self.request_time = 0
 
+    # buffers
+        self.buffer_max = 0
+        self.buffer_anterior = 0
+        self.buffer_atual = 0
+
 	###################### State definiion #######################
 	# first argument: current quality
 	# second argument: current bandwidth
@@ -56,7 +61,7 @@ class R2AQLearning(IR2A):
         self.N = len(self.qi)
 		
 		# so consigo criar a tabela quando souber quantas qualidades tem
-		self.create_q_table()
+		#self.create_q_table()
 		
         t = time.time() - self.request_time #diferenca de tempo
         self.bandwidth = msg.get_bit_length()/t #bits/s
@@ -86,12 +91,18 @@ class R2AQLearning(IR2A):
 		
 		# mantem a qualidade (que ainda sera alterada)
 		# e atualiza o bandwidth
+
+		if len(self.whiteboard.get_playback_buffer_size())!=0:
+       	    self.buffer_anterior = self.whiteboard.get_playback_buffer_size()[-2][1]
+    	    self.buffer_atual = self.whiteboard.get_playback_buffer_size()[-1][1]
+
         self.state[1] = self.bandwidth
         print('State: ', self.state)
         self.send_up(msg)
 
     def initialize(self):
-        pass
+    	self.buffer_max = self.whiteboard.get_max_buffer_size()
+    	pass
 
     def finalization(self):
         pass
@@ -114,8 +125,8 @@ class R2AQLearning(IR2A):
 	# qi[N], BW = H |
 	
 	# Knowing how many states exist, initialize the Q-table with 0
-    def create_q_table(self):
-        self.q_table = 
+    #def create_q_table(self):
+    #    self.q_table = 
 	
 	##############################################################
 	#########              Reward Functions              #########
@@ -125,7 +136,7 @@ class R2AQLearning(IR2A):
     def reward_quality(self):
         r_quality = (self.qi-1)/(self.N-1)*2 - 1 #formula do artigo
         return r_quality
-		
+
 	# R_oscillation
     def reward_oscillation(self):
 		# vamos precisar de um vetor de qualidades antigas para
@@ -141,12 +152,20 @@ class R2AQLearning(IR2A):
 		
 	# R_bufferfilling
     def reward_bufferfilling(self):
-        r_bufferfilling = 0 #definir ainda
-        return r_bufferfilling
+    	if self.buffer_atual <= 0.1*self.buffer_max:
+            r_bufferfilling = -1
+        else:
+            r_bufferfilling = (2*buffer_atual)/0.9*buffer_max - 1.1/0.9   
+        
+       	return r_bufferfilling
 	
 	# R_bufferchange
     def reward_bufferchange(self):
-        r_bufferchange = 0 #definir ainda
+        if self.buffer_atual <= self.buffer_anterior:
+            r_bufferchange = (self.buffer_atual - self.buffer_anterior)/self.buffer_anterior
+        else:
+            r_bufferchange = (self.buffer_atual - self.buffer_anterior)/(self.buffer_atual - self.buffer_anterior/2) 
+
         return r_bufferchange
 		
 	# R - total reward
