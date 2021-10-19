@@ -227,7 +227,7 @@ class R2AQLearning(IR2A):
         	if self.length >= self.max_length:
         		r_oscillation = 0
         	else:
-        	    r_oscillation = -1/float(self.length)**(2/self.depth) + (float(self.lenght)-1)/((self.max_length-1)*self.max_length**(2/depth))
+        	    r_oscillation = -1/float(self.length)**(2/self.depth) + (float(self.length)-1)/((self.max_length-1)*self.max_length**(2/self.depth))
 
         	self.length = 0
 
@@ -238,7 +238,7 @@ class R2AQLearning(IR2A):
     	if self.buffer_atual <= 0.1*self.buffer_max:
             r_bufferfilling = -1
     	else:
-            r_bufferfilling = (2*buffer_atual)/0.9*buffer_max - 1.1/0.9   
+            r_bufferfilling = (2*self.buffer_atual)/0.9*self.buffer_max - 1.1/0.9   
         
     	return r_bufferfilling
 	
