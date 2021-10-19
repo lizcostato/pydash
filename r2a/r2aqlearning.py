@@ -35,8 +35,17 @@ class R2AQLearning(IR2A):
 
     # buffers
         self.buffer_max = 0
-        self.buffer_anterior = 0
+        self.buffer_anterior = 1
         self.buffer_atual = 0
+
+    #oscilação
+        self.qi_atual = 0
+        self.qi_anterior = 0
+        self.qi_antepenultimo = 0
+        self.oscillation = 0
+        self.max_length = 30
+        self.length = 0
+        self.depht = 0
 
 	###################### State definiion #######################
 	# first argument: current quality
@@ -75,7 +84,7 @@ class R2AQLearning(IR2A):
     def handle_segment_size_request(self, msg):
 	
         self.request_time = time.time()
-	
+
         # time to define the segment quality choose to make the request
         self.state[0] = self.qi[19] #Alterar depois
         msg.add_quality_id(self.qi[19]) #Aqui que colocamos a qualidade
@@ -92,9 +101,16 @@ class R2AQLearning(IR2A):
 		# mantem a qualidade (que ainda sera alterada)
 		# e atualiza o bandwidth
 
-		if len(self.whiteboard.get_playback_buffer_size())!=0:
-       	    self.buffer_anterior = self.whiteboard.get_playback_buffer_size()[-2][1]
-    	    self.buffer_atual = self.whiteboard.get_playback_buffer_size()[-1][1]
+
+
+        if len(self.whiteboard.get_playback_buffer_size())!=0:
+       	    self.buffer_anterior = self.buffer_atual
+            self.buffer_atual = self.whiteboard.get_playback_buffer_size()[-1][1]
+
+        if len(self.whiteboard.get_playback_qi())!=0:
+            self.qi_antepenultimo = self.qi_anterior
+            self.qi_anterior = self.qi_atual
+            self.qi_atual = self.whiteboard.get_playback_qi()[-1][1]
 
         self.state[1] = self.bandwidth
         print('State: ', self.state)
@@ -134,7 +150,7 @@ class R2AQLearning(IR2A):
 		
 	# R_quality
     def reward_quality(self):
-        r_quality = (self.qi-1)/(self.N-1)*2 - 1 #formula do artigo
+        r_quality = (self.qi_atual-1)/(self.N-1)*2 - 1 #formula do artigo
         return r_quality
 
 	# R_oscillation
@@ -147,17 +163,34 @@ class R2AQLearning(IR2A):
 		# self.max_buffer_size = int(config_parser.get_parameter('max_buffer_size'))
 		# self.playback_buffer_size = OutVector() seria o quao cheio esta o buffer?
 		#		nao sei o que seria esse OutVector
-        r_oscillation = 0 #definir ainda
+
+        if ((self.qi_antepenultimo >= self.qi_anterior) & (self.qi_atual >= self.qi_anterior)) | ((self.qi_antepenultimo <= self.qi_anterior) & (self.qi_atual <= self.qi_anterior)):
+            self.oscillation = 0
+            self.length += 1
+        else:
+            self.oscillation = 1
+            self.depth = self.qi_atual - self.qi_anterior
+
+        if self.oscillation == 0:
+        	r_oscillation = 0
+        else:
+        	if self.length >= self.max_length:
+        		r_oscillation = 0
+        	else:
+        	    r_oscillation = -1/float(self.length)**(2/self.depth) + (float(self.lenght)-1)/((self.max_length-1)*self.max_length**(2/depth))
+
+        	self.length = 0
+
         return r_oscillation
 		
 	# R_bufferfilling
     def reward_bufferfilling(self):
     	if self.buffer_atual <= 0.1*self.buffer_max:
             r_bufferfilling = -1
-        else:
+    	else:
             r_bufferfilling = (2*buffer_atual)/0.9*buffer_max - 1.1/0.9   
         
-       	return r_bufferfilling
+    	return r_bufferfilling
 	
 	# R_bufferchange
     def reward_bufferchange(self):
