@@ -53,8 +53,14 @@ class R2AQLearning(IR2A):
 	# second argument: current bandwidth
         self.state = [0,0]
         self.low_bandwidth = 0
-        self.medium_bandwidth = 0
+        self.low_medium_bandwidth = 0
+        self.high_medium_bandwidth = 0
         self.high_bandwidth = 0
+        self.SL = 1
+        self.L = 2
+        self.M = 3
+        self.H = 4
+        self.SH = 5
 		
 	
 	############# Constants used to define the reward ############
@@ -63,6 +69,13 @@ class R2AQLearning(IR2A):
         self.C2 = 1
         self.C3 = 4
         self.C4 = 3
+		
+	############ Constants used to update the Q-value ############
+	# The values ​​used were obtained in the article
+	# learning rate (α)
+        alfa = 0.3
+	# discount factor (γ)
+        gama = 0.95
 
     def handle_xml_request(self, msg):
         self.request_time = time.time()
@@ -75,7 +88,8 @@ class R2AQLearning(IR2A):
         self.N = len(self.qi)
 		
         self.low_bandwidth = self.qi[0]
-        self.medium_bandwidth = self.qi[floor(self.N/2) - 1]
+        self.low_medium_bandwidth = self.qi[floor(self.N/3) - 1]
+        self.high_medium_bandwidth = self.qi[floor(2*self.N/3) - 1]
         self.high_bandwidth = self.qi[self.N - 1]
 		
 		# so consigo criar a tabela quando souber quantas qualidades tem
@@ -86,8 +100,8 @@ class R2AQLearning(IR2A):
         self.bandwidth = msg.get_bit_length()/t #bits/s
         print('Bandwidth: ', self.bandwidth)
 		# mantem a qualidade e atualiza o bandwidth
-        self.state[1] = self.bandwidth
-        print('State: ', self.state)
+        #self.state[1] = self.bandwidth
+        #print('State: ', self.state)
 		
         self.send_up(msg)
 
@@ -105,6 +119,19 @@ class R2AQLearning(IR2A):
         self.bandwidth = msg.get_bit_length()/t #bits/s
         print('Bandwidth: ', self.bandwidth)
 		
+        if self.bandwidth < self.low_bandwidth:
+            self.state[1] = self.SL
+        elif self.bandwidth < self.low_medium_bandwidth:
+            self.state[1] = self.L	
+        elif self.bandwidth < self.high_medium_bandwidth:
+            self.state[1] = self.M
+        elif self.bandwidth < self.high_bandwidth:
+            self.state[1] = self.H
+        elif self.bandwidth > self.high_bandwidth:
+            self.state[1] = self.SH
+			
+        print('State: ', self.state)
+		
 		#calcular recomensa
         #rodar o q-learning
 		
@@ -119,9 +146,7 @@ class R2AQLearning(IR2A):
             self.qi_antepenultimo = self.qi_anterior
             self.qi_anterior = self.qi_atual
             self.qi_atual = self.whiteboard.get_playback_qi()[-1][1]
-
-        self.state[1] = self.bandwidth
-        print('State: ', self.state)
+			
         self.send_up(msg)
 
     def initialize(self):
@@ -250,17 +275,28 @@ class R2AQLearning(IR2A):
 	######################## Exploration #########################
 	
     def exploration(self):
-	############ Constants used to update the Q-value ############
-		# The values ​​used were obtained in the article
-		# learning rate (α)
-        alfa = 0.3
-		# discount factor (γ)
-        gama = 0.95
         print('em exploration')
 	
 	# seleciona aleatoriamente o próximo estado e atualiza a 
 	# tabela Q com o resultado de Q(s, a) = Q(s, a) + α [r + γ
 	# max_b(s',b) - Q(s,a)] - Bellman Equation
+	
+        self.state[0] = self.qi[random.randrange(0,N,1)]
+		
+        random_number = random.randrange(1,5,1)
+        if random_number == 1:
+            self.state[1] = self.SL
+        elif random_number == 2:
+            self.state[1] = self.L
+        elif random_number == 3:
+            self.state[1] = self.M
+        elif random_number == 4:
+            self.state[1] = self.H
+        elif random_number == 5:
+            self.state[1] = self.SH
+        else: #nao era para chegar aqui
+            self.state[1] = self.SL
+		
 	
 	######################## Exploitation ########################
 	
