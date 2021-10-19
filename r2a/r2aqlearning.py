@@ -18,6 +18,7 @@ from r2a.ir2a import IR2A
 from collections import namedtuple
 import numpy as np #usaremos para random
 import time
+import random
 from math import floor
 
 class R2AQLearning(IR2A):
@@ -111,7 +112,19 @@ class R2AQLearning(IR2A):
 
         # time to define the segment quality choose to make the request
         self.state[0] = self.qi[19] #Alterar depois
-        msg.add_quality_id(self.qi[19]) #Aqui que colocamos a qualidade
+
+                
+        #############################
+        # pedindo um valor aleatorio só pra pode testar
+        qi_id = random.randint(0, len(self.qi)-1)
+        print(self.whiteboard.get_playback_history())
+        msg.add_quality_id(self.qi[qi_id]) #Aqui que colocamos a qualidade
+        
+        ##############
+
+
+        #msg.add_quality_id(self.qi[19]) #Aqui que colocamos a qualidade
+
         self.send_down(msg)
 
     def handle_segment_size_response(self, msg):
