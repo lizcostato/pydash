@@ -111,8 +111,6 @@ class R2AQLearning(IR2A):
 		# mantem a qualidade (que ainda sera alterada)
 		# e atualiza o bandwidth
 
-
-
         if len(self.whiteboard.get_playback_buffer_size())!=0:
        	    self.buffer_anterior = self.buffer_atual
             self.buffer_atual = self.whiteboard.get_playback_buffer_size()[-1][1]
@@ -258,6 +256,7 @@ class R2AQLearning(IR2A):
         alfa = 0.3
 		# discount factor (γ)
         gama = 0.95
+        print('em exploration')
 	
 	# seleciona aleatoriamente o próximo estado e atualiza a 
 	# tabela Q com o resultado de Q(s, a) = Q(s, a) + α [r + γ
@@ -265,6 +264,6 @@ class R2AQLearning(IR2A):
 	
 	######################## Exploitation ########################
 	
-    def exploration(self):
-        print('em exploration')
+    def exploitation(self):
+        print('em exploitation')
 	# so usa a tabela Q
