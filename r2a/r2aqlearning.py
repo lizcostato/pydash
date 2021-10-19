@@ -18,6 +18,7 @@ from r2a.ir2a import IR2A
 from collections import namedtuple
 import numpy as np #usaremos para random
 import time
+from math import floor
 
 class R2AQLearning(IR2A):
 
@@ -51,6 +52,10 @@ class R2AQLearning(IR2A):
 	# first argument: current quality
 	# second argument: current bandwidth
         self.state = [0,0]
+        self.low_bandwidth = 0
+        self.medium_bandwidth = 0
+        self.high_bandwidth = 0
+		
 	
 	############# Constants used to define the reward ############
 	# Wieghts C1-C4 - the values ​​used were obtained in the article
@@ -69,8 +74,13 @@ class R2AQLearning(IR2A):
         self.qi = self.parsed_mpd.get_qi()
         self.N = len(self.qi)
 		
+        self.low_bandwidth = self.qi[0]
+        self.medium_bandwidth = self.qi[floor(self.N/2) - 1]
+        self.high_bandwidth = self.qi[self.N - 1]
+		
 		# so consigo criar a tabela quando souber quantas qualidades tem
-		#self.create_q_table()
+		# e as faixas de largura de banda
+        self.create_q_table()
 		
         t = time.time() - self.request_time #diferenca de tempo
         self.bandwidth = msg.get_bit_length()/t #bits/s
@@ -127,22 +137,26 @@ class R2AQLearning(IR2A):
 	#########                   Q-table                  #########
 	##############################################################
 	#						Actions (choose qi[x])
-	#	States		| qi[0] qi[1] qi[2] qi[3] ... qi[N-1] qi[N]
-	# qi[0], BW = L |
-	# qi[1], BW = L |
-	# qi[2], BW = L |
-	# qi[3], BW = L |
-	# ...           |
-	# qi[N], BW = M |              Q-values
-	# qi[0], BW = M |
-	# qi[1], BW = M |
-	# qi[2], BW = M |
-	# ...           |
-	# qi[N], BW = H |
+	#	States		 | qi[0] qi[1] qi[2] qi[3] ... qi[N-1] qi[N]
+	# qi[0], BW = SL |
+	# qi[1], BW = SL |
+	# qi[2], BW = SL |
+	# qi[3], BW = SL |
+	# ...            |
+	# qi[N], BW = SL |              Q-values
+	# qi[0], BW = L  | 
+	# qi[1], BW = L  |
+	# ...            | 	
+	# qi[N], BW = L  | 
+	# qi[0], BW = M  |
+	# qi[1], BW = M  |
+	# qi[2], BW = M  |
+	# ...            |
+	# qi[N], BW = SH |
 	
 	# Knowing how many states exist, initialize the Q-table with 0
-    #def create_q_table(self):
-    #    self.q_table = 
+    def create_q_table(self):
+        self.q_table = np.zeros((5, self.N)) #5 faixas de bandwidth
 	
 	##############################################################
 	#########              Reward Functions              #########
