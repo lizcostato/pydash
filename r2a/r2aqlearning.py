@@ -48,8 +48,9 @@ class R2AQLearning(IR2A):
     #oscilação
         self.qi_atual = 0
         self.qi_anterior = 0
-        self.qi_antepenultimo = 0
         self.oscillation = 0
+        self.increase = True
+        self.decrease = False
         self.max_length = 30
         self.length = 1
         self.depht = 0
@@ -169,13 +170,11 @@ class R2AQLearning(IR2A):
             self.buffer_atual = self.whiteboard.get_playback_buffer_size()[-1][1]
 
         if len(self.whiteboard.get_playback_qi())!=0:
-            self.qi_antepenultimo = self.qi_anterior
             self.qi_anterior = self.qi_atual
             self.qi_atual = self.whiteboard.get_playback_qi()[-1][1]
             print('        whiteboard.get_playback_qi(): ',self.whiteboard.get_playback_qi())
             print('        >>>self.qi_atual: ',self.qi_atual)
-		
-        print('QI antepenultimo: ', self.qi_antepenultimo)
+
         print('QI anterior: ', self.qi_anterior)
         print('QI atual: ', self.qi_atual)
 
@@ -237,14 +236,31 @@ class R2AQLearning(IR2A):
 
 	# R_oscillation
     def reward_oscillation(self):
-        if ((self.qi_antepenultimo >= self.qi_anterior) and (self.qi_atual <= self.qi_anterior)) or ((self.qi_antepenultimo <= self.qi_anterior) and (self.qi_atual >= self.qi_anterior)):
+        #Definindo se tem oscilação ou não com base na tendência de aumento ou decaimento
+        if self.qi_atual > self.qi_anterior:
+            if self.increase == True:
+                self.oscillation = 0
+                self.length += 1
+            else:
+                self.increase = True
+                self.decrease = False
+                self.oscillation = 1
+                self.depth = abs(self.qi_atual - self.qi_anterior)
+        elif self.qi_atual < self.qi_anterior:
+            if self.decrease == True:
+                self.oscillation = 0
+                self.length += 1
+            else:
+                self.increase = False
+                self.decrease = True
+                self.oscillation = 1
+                self.depth = abs(self.qi_atual - self.qi_anterior)
+                #print('Depth:', self.depth)
+        else:
             self.oscillation = 0
             self.length += 1
-        else:
-            self.oscillation = 1
-            self.depth = abs(self.qi_atual - self.qi_anterior)
-            #print('Depth:', self.depth)
 
+        #Calculando o valor da componente de recompensa dada a oscilação ou não
         if self.oscillation == 0:
             r_oscillation = 0
         else:
@@ -349,7 +365,7 @@ class R2AQLearning(IR2A):
 	
     def exploitation(self):
         print('         ||>>> em exploitation')
-		indice1 = self.last_state[0]*self.last_state[1] + self.last_state[0] #linha da tabela = BW*qi + qi
+        indice1 = self.last_state[0]*self.last_state[1] + self.last_state[0] #linha da tabela = BW*qi + qi
         indice2 = self.last_state[0] #coluna da tabela = qualidade
         return 0 #Mudar para a qualidade que escolheu pela tabela (maior valor da linha)
 	# so usa a tabela Q
