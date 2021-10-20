@@ -36,6 +36,9 @@ class R2AQLearning(IR2A):
 	# value obtained in handle_xml_response()
         self.N = 0 
         self.request_time = 0
+	# quality that is going to be asked
+        self.qi_request = 0
+        self.last_policy_was_exploration = 0
 
     # buffers
         self.buffer_max = 0
@@ -55,15 +58,16 @@ class R2AQLearning(IR2A):
 	# first argument: current quality
 	# second argument: current bandwidth
         self.state = [0,0]
+        self.last_state = [0,0]
         self.low_bandwidth = 0
         self.low_medium_bandwidth = 0
         self.high_medium_bandwidth = 0
         self.high_bandwidth = 0
-        self.SL = 1
-        self.L = 2
-        self.M = 3
-        self.H = 4
-        self.SH = 5
+        self.SL = 0
+        self.L = 1
+        self.M = 2
+        self.H = 3
+        self.SH = 4
 		
 	
 	############# Constants used to define the reward ############
@@ -103,7 +107,8 @@ class R2AQLearning(IR2A):
         self.bandwidth = msg.get_bit_length()/t #bits/s
         print('Bandwidth: ', self.bandwidth)
 		# mantem a qualidade e atualiza o bandwidth
-        #self.state[1] = self.bandwidth
+        self.last_state = self.state
+        self.state[1] = self.bandwidth
         #print('State: ', self.state)
 		
         self.send_up(msg)
@@ -112,17 +117,27 @@ class R2AQLearning(IR2A):
 	
         self.request_time = time.time()
 
-                
+        if self.last_policy_was_exploration == 1:
+            print('Foi escolhido exploration, agora atualizando tabela Q: ')
+            self.exploration_update_q_table()
+		
         #############################
         # pedindo um valor aleatorio só pra pode testar
         qi_id = random.randint(0, len(self.qi)-1)
         #print(self.whiteboard.get_playback_history())
+		# Quando for usar o q-learning colocar:
+		#msg.add_quality_id(self.qi[self.qi_request])
         msg.add_quality_id(self.qi[qi_id]) #Aqui que colocamos a qualidade
         
         ##############
 
         # time to define the segment quality choose to make the request
-        self.state[0] = self.qi[qi_id] #Alterar depois
+        self.last_state = self.state
+		# Quando for usar o q-learning colocar:
+		#self.state[0] = self.qi_request
+        self.state[0] = qi_id 	# Mudando para o primeiro argumento ser de 0 
+								# a 19 e n um valor em bps, era:
+        #self.state[0] = self.qi[qi_id]
 
         #msg.add_quality_id(self.qi[19]) #Aqui que colocamos a qualidade
 
@@ -133,6 +148,7 @@ class R2AQLearning(IR2A):
         self.bandwidth = msg.get_bit_length()/t #bits/s
         print('Bandwidth: ', self.bandwidth)
 		
+        self.last_state = self.state
         if self.bandwidth < self.low_bandwidth:
             self.state[1] = self.SL
         elif self.bandwidth < self.low_medium_bandwidth:
@@ -146,8 +162,6 @@ class R2AQLearning(IR2A):
 			
         print('State: ', self.state)
 		
-        #rodar o q-learning
-		
 		# mantem a qualidade (que ainda sera alterada)
 		# e atualiza o bandwidth
         if len(self.whiteboard.get_playback_buffer_size())!=0:
@@ -158,13 +172,24 @@ class R2AQLearning(IR2A):
             self.qi_antepenultimo = self.qi_anterior
             self.qi_anterior = self.qi_atual
             self.qi_atual = self.whiteboard.get_playback_qi()[-1][1]
+            print('        whiteboard.get_playback_qi(): ',self.whiteboard.get_playback_qi())
+            print('        >>>self.qi_atual: ',self.qi_atual)
 		
         print('QI antepenultimo: ', self.qi_antepenultimo)
         print('QI anterior: ', self.qi_anterior)
         print('QI atual: ', self.qi_atual)
 
-
-        #calcular recomensa
+		#Rodar o q-learning, chamando o e-greedy, que vai escolher entre exploration
+		#e exploitation. Mas acho que tinhamos de dar um jeito de, no inicio explorar
+		#pra ter algo na tabela Q...
+		
+        #Oq quero é um retorno de qual qualidade vou pedir na proxima request, ou
+		#seja, quero atualizar o self.qi_request
+        self.qi_request = self.e_greedy()
+		
+        #Eu acho que calcula a recompensa so se entrar em exploration...
+		#Por ora podemos deixar so por questao de imprimir e ver oq ta rolando
+		#calcular recomensa
         print('Recompensa: ', self.total_reward())
 
         self.send_up(msg)
@@ -199,7 +224,7 @@ class R2AQLearning(IR2A):
 	
 	# Knowing how many states exist, initialize the Q-table with 0
     def create_q_table(self):
-        self.q_table = np.zeros((5, self.N)) #5 faixas de bandwidth
+        self.q_table = np.zeros((5*self.N, self.N)) #5 faixas de bandwidth
 	
 	##############################################################
 	#########              Reward Functions              #########
@@ -212,22 +237,13 @@ class R2AQLearning(IR2A):
 
 	# R_oscillation
     def reward_oscillation(self):
-		# vamos precisar de um vetor de qualidades antigas para
-		# definir a profundidade e largura da oscilacao - quantos
-		# valores precisamos, sera?
-		
-		# arquivo player.py parece ter informacoes do buffer:
-		# self.max_buffer_size = int(config_parser.get_parameter('max_buffer_size'))
-		# self.playback_buffer_size = OutVector() seria o quao cheio esta o buffer?
-		#		nao sei o que seria esse OutVector
-
         if ((self.qi_antepenultimo >= self.qi_anterior) and (self.qi_atual <= self.qi_anterior)) or ((self.qi_antepenultimo <= self.qi_anterior) and (self.qi_atual >= self.qi_anterior)):
             self.oscillation = 0
             self.length += 1
         else:
             self.oscillation = 1
             self.depth = abs(self.qi_atual - self.qi_anterior)
-            print('Depth:', self.depth)
+            #print('Depth:', self.depth)
 
         if self.oscillation == 0:
             r_oscillation = 0
@@ -238,7 +254,7 @@ class R2AQLearning(IR2A):
                 r_oscillation = -1/float(self.length)**(2/self.depth) + (float(self.length)-1)/((self.max_length-1)*self.max_length**(2/self.depth))
             self.length = 1
 
-        print('Oscilacao: ', r_oscillation)
+        #print('Oscilacao: ', r_oscillation)
         return r_oscillation
 		
 	# R_bufferfilling
@@ -265,13 +281,13 @@ class R2AQLearning(IR2A):
 	# R - total reward
     def total_reward(self):
         r_quality = self.reward_quality()
-        print('Recompensa qualidade: ', r_quality)
+        #print('Recompensa qualidade: ', r_quality)
         r_oscillation = self.reward_oscillation()
-        print('Recompensa oscilacao: ', r_oscillation)
+        #print('Recompensa oscilacao: ', r_oscillation)
         r_bufferfilling = self.reward_bufferfilling()
-        print('Recompensa bufferfilling: ', r_bufferfilling)
+        #print('Recompensa bufferfilling: ', r_bufferfilling)
         r_bufferchange = self.reward_bufferchange()
-        print('Recompensa bufferchange: ', r_bufferchange)
+        #print('Recompensa bufferchange: ', r_bufferchange)
 		
         reward = self.C1*r_quality + self.C2*r_oscillation + self.C3*r_bufferfilling + self.C4*r_bufferchange
         return reward
@@ -293,41 +309,45 @@ class R2AQLearning(IR2A):
 	####################### Using ε-greedy #######################
     def e_greedy(self):
 		# Exploration rate (ε)
-        epsilon = 0.05
+        epsilon = 0.8 	# Costuma ser bem baixo, tipo, 0.05, to colocando
+						# maior pra ele explorar mais por ora
         random_number = np.random.random()
         if random_number < epsilon:
-            self.exploration()
+            self.last_policy_was_exploration = 1
+            return self.exploration_choose_qi()
         else:
-            self.exploitation()
+            self.last_policy_was_exploration = 0
+            return self.exploitation()
 	
 	######################## Exploration #########################
-	
-    def exploration(self):
-        print('em exploration')
 	
 	# seleciona aleatoriamente o próximo estado e atualiza a 
 	# tabela Q com o resultado de Q(s, a) = Q(s, a) + α [r + γ
 	# max_b(s',b) - Q(s,a)] - Bellman Equation
 	
-        self.state[0] = self.qi[random.randrange(0,self.N,1)]
+    def exploration_choose_qi(self):
+        print('         ||>>> em exploration')
+	
+		#Qualidade que vou pedir na proxima requisicao
+        random_number = random.randrange(0,self.N,1)
+			
+        print('Qualidade escolhida: ', random_number)
+        return random_number
 		
-        random_number = random.randrange(1,5,1)
-        if random_number == 1:
-            self.state[1] = self.SL
-        elif random_number == 2:
-            self.state[1] = self.L
-        elif random_number == 3:
-            self.state[1] = self.M
-        elif random_number == 4:
-            self.state[1] = self.H
-        elif random_number == 5:
-            self.state[1] = self.SH
-        else: #nao era para chegar aqui
-            self.state[1] = self.SL
-		
+    def exploration_update_q_table(self):
+        print('Recompensa: ', self.total_reward())
+		# Preciso ver qual estado eu tava, pegar qual o valor Q
+		# atual desse estado na tabela Q, e fazer o calculo
+		# da equacao de Bellman. Pra isso, preciso ter o estado 
+		# anterior: self.last_state.
+        indice1 = self.last_state[0]*self.last_state[1] + self.last_state[0] #linha da tabela = BW*qi + qi
+        indice2 = self.last_state[0] #coluna da tabela = qualidade
+		# Dificuldade agora: termo max_b(s',b)
+		#self.q_table[indice1][indice2] = self.q_table[indice1][indice2]+alfa*(self.total_reward()+gama* - self.q_table[][])
 	
 	######################## Exploitation ########################
 	
     def exploitation(self):
-        print('em exploitation')
+        print('         ||>>> em exploitation')
+        return 0 #Mudar para a qualidade que escolheu pela tabela
 	# so usa a tabela Q
