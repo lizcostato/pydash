@@ -46,7 +46,7 @@ class R2AQLearning(IR2A):
         self.qi_antepenultimo = 0
         self.oscillation = 0
         self.max_length = 30
-        self.length = 0
+        self.length = 1
         self.depht = 0
 
 	###################### State definiion #######################
@@ -110,18 +110,17 @@ class R2AQLearning(IR2A):
 	
         self.request_time = time.time()
 
-        # time to define the segment quality choose to make the request
-        self.state[0] = self.qi[19] #Alterar depois
-
                 
         #############################
         # pedindo um valor aleatorio só pra pode testar
         qi_id = random.randint(0, len(self.qi)-1)
-        print(self.whiteboard.get_playback_history())
+        #print(self.whiteboard.get_playback_history())
         msg.add_quality_id(self.qi[qi_id]) #Aqui que colocamos a qualidade
         
         ##############
 
+        # time to define the segment quality choose to make the request
+        self.state[0] = self.qi[qi_id] #Alterar depois
 
         #msg.add_quality_id(self.qi[19]) #Aqui que colocamos a qualidade
 
@@ -145,12 +144,10 @@ class R2AQLearning(IR2A):
 			
         print('State: ', self.state)
 		
-		#calcular recomensa
         #rodar o q-learning
 		
 		# mantem a qualidade (que ainda sera alterada)
 		# e atualiza o bandwidth
-
         if len(self.whiteboard.get_playback_buffer_size())!=0:
        	    self.buffer_anterior = self.buffer_atual
             self.buffer_atual = self.whiteboard.get_playback_buffer_size()[-1][1]
@@ -159,7 +156,15 @@ class R2AQLearning(IR2A):
             self.qi_antepenultimo = self.qi_anterior
             self.qi_anterior = self.qi_atual
             self.qi_atual = self.whiteboard.get_playback_qi()[-1][1]
-			
+		
+        print('QI antepenultimo: ', self.qi_antepenultimo)
+        print('QI anterior: ', self.qi_anterior)
+        print('QI atual: ', self.qi_atual)
+
+
+        #calcular recomensa
+        print('Recompensa: ', self.total_reward())
+
         self.send_up(msg)
 
     def initialize(self):
@@ -200,7 +205,7 @@ class R2AQLearning(IR2A):
 		
 	# R_quality
     def reward_quality(self):
-        r_quality = (self.qi_atual-1)/(self.N-1)*2 - 1 #formula do artigo
+        r_quality = (((self.qi_atual-1)/(self.N-1))*2) - 1 #formula do artigo
         return r_quality
 
 	# R_oscillation
@@ -214,23 +219,24 @@ class R2AQLearning(IR2A):
 		# self.playback_buffer_size = OutVector() seria o quao cheio esta o buffer?
 		#		nao sei o que seria esse OutVector
 
-        if ((self.qi_antepenultimo >= self.qi_anterior) & (self.qi_atual >= self.qi_anterior)) | ((self.qi_antepenultimo <= self.qi_anterior) & (self.qi_atual <= self.qi_anterior)):
+        if ((self.qi_antepenultimo >= self.qi_anterior) and (self.qi_atual <= self.qi_anterior)) or ((self.qi_antepenultimo <= self.qi_anterior) and (self.qi_atual >= self.qi_anterior)):
             self.oscillation = 0
             self.length += 1
         else:
             self.oscillation = 1
-            self.depth = self.qi_atual - self.qi_anterior
+            self.depth = abs(self.qi_atual - self.qi_anterior)
+            print('Depth:', self.depth)
 
         if self.oscillation == 0:
-        	r_oscillation = 0
+            r_oscillation = 0
         else:
-        	if self.length >= self.max_length:
-        		r_oscillation = 0
-        	else:
-        	    r_oscillation = -1/float(self.length)**(2/self.depth) + (float(self.length)-1)/((self.max_length-1)*self.max_length**(2/self.depth))
+            if self.length >= self.max_length:
+                r_oscillation = 0
+            else:
+                r_oscillation = -1/float(self.length)**(2/self.depth) + (float(self.length)-1)/((self.max_length-1)*self.max_length**(2/self.depth))
+            self.length = 1
 
-        	self.length = 0
-
+        print('Oscilacao: ', r_oscillation)
         return r_oscillation
 		
 	# R_bufferfilling
@@ -238,14 +244,17 @@ class R2AQLearning(IR2A):
     	if self.buffer_atual <= 0.1*self.buffer_max:
             r_bufferfilling = -1
     	else:
-            r_bufferfilling = (2*self.buffer_atual)/0.9*self.buffer_max - 1.1/0.9   
+            r_bufferfilling = ((2*self.buffer_atual)/(0.9*self.buffer_max)) - (1.1/0.9) 
         
     	return r_bufferfilling
 	
 	# R_bufferchange
     def reward_bufferchange(self):
         if self.buffer_atual <= self.buffer_anterior:
-            r_bufferchange = (self.buffer_atual - self.buffer_anterior)/self.buffer_anterior
+            if self.buffer_anterior != 0:
+                r_bufferchange = (self.buffer_atual - self.buffer_anterior)/self.buffer_anterior
+            else:
+                r_bufferchange = -1
         else:
             r_bufferchange = (self.buffer_atual - self.buffer_anterior)/(self.buffer_atual - self.buffer_anterior/2) 
 
@@ -254,9 +263,13 @@ class R2AQLearning(IR2A):
 	# R - total reward
     def total_reward(self):
         r_quality = self.reward_quality()
+        print('Recompensa qualidade: ', r_quality)
         r_oscillation = self.reward_oscillation()
+        print('Recompensa oscilacao: ', r_oscillation)
         r_bufferfilling = self.reward_bufferfilling()
+        print('Recompensa bufferfilling: ', r_bufferfilling)
         r_bufferchange = self.reward_bufferchange()
+        print('Recompensa bufferchange: ', r_bufferchange)
 		
         reward = self.C1*r_quality + self.C2*r_oscillation + self.C3*r_bufferfilling + self.C4*r_bufferchange
         return reward
@@ -294,7 +307,7 @@ class R2AQLearning(IR2A):
 	# tabela Q com o resultado de Q(s, a) = Q(s, a) + α [r + γ
 	# max_b(s',b) - Q(s,a)] - Bellman Equation
 	
-        self.state[0] = self.qi[random.randrange(0,N,1)]
+        self.state[0] = self.qi[random.randrange(0,self.N,1)]
 		
         random_number = random.randrange(1,5,1)
         if random_number == 1:
