@@ -349,5 +349,7 @@ class R2AQLearning(IR2A):
 	
     def exploitation(self):
         print('         ||>>> em exploitation')
-        return 0 #Mudar para a qualidade que escolheu pela tabela
+		indice1 = self.last_state[0]*self.last_state[1] + self.last_state[0] #linha da tabela = BW*qi + qi
+        indice2 = self.last_state[0] #coluna da tabela = qualidade
+        return 0 #Mudar para a qualidade que escolheu pela tabela (maior valor da linha)
 	# so usa a tabela Q
