@@ -69,7 +69,7 @@ class R2AQLearning(IR2A):
         self.M = 2
         self.H = 3
         self.SH = 4
-		
+        self.vector_qi = []
 	
 	############# Constants used to define the reward ############
 	# Wieghts C1-C4 - the values ​​used were obtained in the article
@@ -81,9 +81,9 @@ class R2AQLearning(IR2A):
 	############ Constants used to update the Q-value ############
 	# The values ​​used were obtained in the article
 	# learning rate (α)
-        alfa = 0.3
+        self.alfa = 0.3
 	# discount factor (γ)
-        gama = 0.95
+        self.gama = 0.95
 
     def handle_xml_request(self, msg):
         self.request_time = time.time()
@@ -125,6 +125,7 @@ class R2AQLearning(IR2A):
         #############################
         # pedindo um valor aleatorio só pra pode testar
         qi_id = random.randint(0, len(self.qi)-1)
+        self.vector_qi.append(qi_id)
         #print(self.whiteboard.get_playback_history())
 		# Quando for usar o q-learning colocar:
 		#msg.add_quality_id(self.qi[self.qi_request])
@@ -168,6 +169,11 @@ class R2AQLearning(IR2A):
         if len(self.whiteboard.get_playback_buffer_size())!=0:
        	    self.buffer_anterior = self.buffer_atual
             self.buffer_atual = self.whiteboard.get_playback_buffer_size()[-1][1]
+
+        print(self.vector_qi)
+		
+        if len(self.whiteboard.get_playback_history())!=0:
+            print('        whiteboard.get_playback_history(): ',self.whiteboard.get_playback_history())
 
         if len(self.whiteboard.get_playback_qi())!=0:
             self.qi_anterior = self.qi_atual
@@ -356,10 +362,11 @@ class R2AQLearning(IR2A):
 		# atual desse estado na tabela Q, e fazer o calculo
 		# da equacao de Bellman. Pra isso, preciso ter o estado 
 		# anterior: self.last_state.
-        indice1 = self.last_state[0]*self.last_state[1] + self.last_state[0] #linha da tabela = BW*qi + qi
+        indice1 = self.N*self.last_state[1] + self.last_state[0] #linha da tabela = N*BW + qi
         indice2 = self.last_state[0] #coluna da tabela = qualidade
+        indice3 = self.N*self.state[1] + self.state[0] #linha da tabela = N*BW + qi
 		# Dificuldade agora: termo max_b(s',b)
-		#self.q_table[indice1][indice2] = self.q_table[indice1][indice2]+alfa*(self.total_reward()+gama* - self.q_table[][])
+        self.q_table[indice1][indice2] = self.q_table[indice1][indice2]+self.alfa*(self.total_reward()+self.gama*np.max(self.q_table[indice3,:]) - self.q_table[indice1][indice2])
 	
 	######################## Exploitation ########################
 	
