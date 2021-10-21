@@ -15,6 +15,7 @@ In this algorithm the quality choice is made using the q-learning algorithm.
 """
 
 from player.parser import *
+from player.player import *
 from r2a.ir2a import IR2A
 
 from collections import namedtuple
@@ -86,9 +87,14 @@ class R2AQLearning(IR2A):
 	# discount factor (γ)
         self.gama = 0.95
 
+    # Vetores para criação de imagens
+        self.vector_reward = []
+        self.vector_exploration_explotation = []
+        self.vector_time_reward = []
+        self.vector_time_exploration_explotation = []
 
     #Pegando tabela Q do arquivo qtable.txt
-        self.q_table = np.loadtxt('q_table_inerval_100_profile_LMH.txt')
+        #self.q_table = np.loadtxt('q_table_inerval_25_profile_LLLMMMHMMMH.txt')
         #print(self.q_table)
 
 
@@ -109,7 +115,7 @@ class R2AQLearning(IR2A):
 		
 		# so consigo criar a tabela quando souber quantas qualidades tem
 		# e as faixas de largura de banda
-        #self.create_q_table()
+        self.create_q_table()
 		
         t = time.time() - self.request_time #diferenca de tempo
         self.bandwidth = msg.get_bit_length()/t #bits/s
@@ -212,9 +218,12 @@ class R2AQLearning(IR2A):
     	pass
 
     def finalization(self):
-        np.savetxt("q_table_inerval_100_profile_LMH.txt", self.q_table)
+        np.savetxt("q_table_inerval_25_profile_LLLMMMHMMMH.txt", self.q_table)
+        self.graphic(self.vector_reward, self.vector_time_reward, 'reward', 'Reward', 'seconds')
+        self.graphic(self.vector_exploration_explotation, self.vector_time_exploration_explotation, 'explotation_exploration', 'Exploration (0.5) - Explotation (1.0)', 'seconds')
 
-    	#pass
+        
+
 		
 	##############################################################
 	#########                   Q-table                  #########
@@ -238,8 +247,8 @@ class R2AQLearning(IR2A):
 	# qi[N], BW = SH |
 	
 	# Knowing how many states exist, initialize the Q-table with 0
-    #def create_q_table(self):
-        #self.q_table = np.zeros((5*self.N, self.N)) #5 faixas de bandwidth
+    def create_q_table(self):
+        self.q_table = np.zeros((5*self.N, self.N)) #5 faixas de bandwidth
 	
 
 	##############################################################
@@ -324,6 +333,8 @@ class R2AQLearning(IR2A):
 		
         reward = self.C1*r_quality + self.C2*r_oscillation + self.C3*r_bufferfilling + self.C4*r_bufferchange
         print('Recompensa total: ', reward)
+        self.vector_reward.append(reward)
+        self.vector_time_reward.append(time.time())
         return reward
 	
 	##############################################################
@@ -343,14 +354,25 @@ class R2AQLearning(IR2A):
 	####################### Using ε-greedy #######################
     def e_greedy(self):
 		# Exploration rate (ε)
-        epsilon = 0.05 	# Costuma ser bem baixo, tipo, 0.05, to colocando
+        epsilon = 1.0 	# Costuma ser bem baixo, tipo, 0.05, to colocando
 						# maior pra ele explorar mais por ora
         random_number = np.random.random()
         if random_number < epsilon:
             self.last_policy_was_exploration = 1
+            self.vector_exploration_explotation.append(0.5)
+            self.vector_time_exploration_explotation.append(time.time())
             return self.exploration_choose_qi()
         else:
             self.last_policy_was_exploration = 0
+            if (len(self.vector_time_reward) != 0):
+                self.vector_reward.append(self.vector_reward[-1])
+                self.vector_time_reward.append(time.time())
+            else:
+                self.vector_reward.append(0)
+                self.vector_time_reward.append(time.time())
+            
+            self.vector_exploration_explotation.append(1.0)
+            self.vector_time_exploration_explotation.append(time.time())
             return self.exploitation()
 	
 	######################## Exploration #########################
@@ -401,3 +423,17 @@ class R2AQLearning(IR2A):
         indice = np.where(self.q_table[indice1,:] == valor_maximo)
         indice_coluna = int(indice[0][0])
         return indice_coluna
+
+
+    ###################### Gerar Gráfico #########################
+    def graphic(self, vector_inf, vector_time, file_name, title, y_axis, x_axis='execution time(s)'):
+
+        plt.plot(vector_time, vector_inf, label=file_name)
+        plt.xlabel(x_axis)
+        plt.ylabel(y_axis)
+        plt.title(title)
+
+        plt.savefig(f'./results/{file_name}.png')
+        plt.clf()
+        plt.cla()
+        plt.close()
