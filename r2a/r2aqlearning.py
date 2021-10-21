@@ -343,7 +343,7 @@ class R2AQLearning(IR2A):
 	####################### Using ε-greedy #######################
     def e_greedy(self):
 		# Exploration rate (ε)
-        epsilon = 0.5 	# Costuma ser bem baixo, tipo, 0.05, to colocando
+        epsilon = 1 	# Costuma ser bem baixo, tipo, 0.05, to colocando
 						# maior pra ele explorar mais por ora
         random_number = np.random.random()
         if random_number < epsilon:
