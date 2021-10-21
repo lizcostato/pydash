@@ -21,6 +21,7 @@ from collections import namedtuple
 import numpy as np #usaremos para random
 import time
 import random
+import pandas
 from math import floor
 
 class R2AQLearning(IR2A):
@@ -41,7 +42,7 @@ class R2AQLearning(IR2A):
         self.last_policy_was_exploration = 0
 
     # buffers
-        self.buffer_max = 0
+        self.buffer_max = self.whiteboard.get_max_buffer_size()
         self.buffer_anterior = 1
         self.buffer_atual = 0
 
@@ -85,6 +86,12 @@ class R2AQLearning(IR2A):
 	# discount factor (γ)
         self.gama = 0.95
 
+
+    #Pegando tabela Q do arquivo qtable.txt
+        self.q_table = np.loadtxt('q_table.txt')
+        print(self.q_table)
+
+
     def handle_xml_request(self, msg):
         self.request_time = time.time()
         self.send_down(msg)
@@ -102,11 +109,11 @@ class R2AQLearning(IR2A):
 		
 		# so consigo criar a tabela quando souber quantas qualidades tem
 		# e as faixas de largura de banda
-        self.create_q_table()
+        #self.create_q_table()
 		
         t = time.time() - self.request_time #diferenca de tempo
         self.bandwidth = msg.get_bit_length()/t #bits/s
-        print('Bandwidth: ', self.bandwidth)
+        #print('Bandwidth: ', self.bandwidth)
 		# mantem a qualidade e atualiza o bandwidth
         self.last_state = self.state
         self.state[1] = self.bandwidth
@@ -119,17 +126,18 @@ class R2AQLearning(IR2A):
         self.request_time = time.time()
 
         if self.last_policy_was_exploration == 1:
-            print('Foi escolhido exploration, agora atualizando tabela Q: ')
+            #print('Foi escolhido exploration, agora atualizando tabela Q: ')
             self.exploration_update_q_table()
 		
         #############################
         # pedindo um valor aleatorio só pra pode testar
-        qi_id = random.randint(0, len(self.qi)-1)
-        self.vector_qi.append(qi_id)
-        #print(self.whiteboard.get_playback_history())
+        #self.qi_id = random.randint(0, len(self.qi)-1)
+        
+        self.vector_qi.append(self.qi_request)
+
 		# Quando for usar o q-learning colocar:
 		#msg.add_quality_id(self.qi[self.qi_request])
-        msg.add_quality_id(self.qi[qi_id]) #Aqui que colocamos a qualidade
+        msg.add_quality_id(self.qi[self.qi_request]) #Aqui que colocamos a qualidade
         
         ##############
 
@@ -137,7 +145,7 @@ class R2AQLearning(IR2A):
         self.last_state = self.state
 		# Quando for usar o q-learning colocar:
 		#self.state[0] = self.qi_request
-        self.state[0] = qi_id 	# Mudando para o primeiro argumento ser de 0 
+        self.state[0] = self.qi_request 	# Mudando para o primeiro argumento ser de 0 
 								# a 19 e n um valor em bps, era:
         #self.state[0] = self.qi[qi_id]
 
@@ -148,7 +156,7 @@ class R2AQLearning(IR2A):
     def handle_segment_size_response(self, msg):
         t = time.time() - self.request_time #diferenca de tempo
         self.bandwidth = msg.get_bit_length()/t #bits/s
-        print('Bandwidth: ', self.bandwidth)
+        #print('Bandwidth: ', self.bandwidth)
 		
         self.last_state = self.state
         if self.bandwidth < self.low_bandwidth:
@@ -162,7 +170,7 @@ class R2AQLearning(IR2A):
         elif self.bandwidth > self.high_bandwidth:
             self.state[1] = self.SH
 			
-        print('State: ', self.state)
+        #print('State: ', self.state)
 		
 		# mantem a qualidade (que ainda sera alterada)
 		# e atualiza o bandwidth
@@ -172,17 +180,17 @@ class R2AQLearning(IR2A):
 
         print(self.vector_qi)
 		
-        if len(self.whiteboard.get_playback_history())!=0:
-            print('        whiteboard.get_playback_history(): ',self.whiteboard.get_playback_history())
+        #if len(self.whiteboard.get_playback_history())!=0:
+        #    print('        whiteboard.get_playback_history(): ',self.whiteboard.get_playback_history())
 
         if len(self.whiteboard.get_playback_qi())!=0:
             self.qi_anterior = self.qi_atual
             self.qi_atual = self.whiteboard.get_playback_qi()[-1][1]
-            print('        whiteboard.get_playback_qi(): ',self.whiteboard.get_playback_qi())
-            print('        >>>self.qi_atual: ',self.qi_atual)
+        #    print('        whiteboard.get_playback_qi(): ',self.whiteboard.get_playback_qi())
+        #    print('        >>>self.qi_atual: ',self.qi_atual)
 
-        print('QI anterior: ', self.qi_anterior)
-        print('QI atual: ', self.qi_atual)
+        #print('QI anterior: ', self.qi_anterior)
+        #print('QI atual: ', self.qi_atual)
 
 		#Rodar o q-learning, chamando o e-greedy, que vai escolher entre exploration
 		#e exploitation. Mas acho que tinhamos de dar um jeito de, no inicio explorar
@@ -191,20 +199,22 @@ class R2AQLearning(IR2A):
         #Oq quero é um retorno de qual qualidade vou pedir na proxima request, ou
 		#seja, quero atualizar o self.qi_request
         self.qi_request = self.e_greedy()
+        #print('Egreedy: ', self.qi_request)
 		
         #Eu acho que calcula a recompensa so se entrar em exploration...
 		#Por ora podemos deixar so por questao de imprimir e ver oq ta rolando
 		#calcular recomensa
-        print('Recompensa: ', self.total_reward())
+        #print('Recompensa: ', self.total_reward())
 
         self.send_up(msg)
 
     def initialize(self):
-    	self.buffer_max = self.whiteboard.get_max_buffer_size()
     	pass
 
     def finalization(self):
-        pass
+        np.savetxt("q_table.txt", self.q_table)
+
+       # pass
 		
 	##############################################################
 	#########                   Q-table                  #########
@@ -228,9 +238,10 @@ class R2AQLearning(IR2A):
 	# qi[N], BW = SH |
 	
 	# Knowing how many states exist, initialize the Q-table with 0
-    def create_q_table(self):
-        self.q_table = np.zeros((5*self.N, self.N)) #5 faixas de bandwidth
+    #def create_q_table(self):
+    #    self.q_table = np.zeros((5*self.N, self.N)) #5 faixas de bandwidth
 	
+
 	##############################################################
 	#########              Reward Functions              #########
 	##############################################################
@@ -331,7 +342,7 @@ class R2AQLearning(IR2A):
 	####################### Using ε-greedy #######################
     def e_greedy(self):
 		# Exploration rate (ε)
-        epsilon = 0.8 	# Costuma ser bem baixo, tipo, 0.05, to colocando
+        epsilon = 1.0 	# Costuma ser bem baixo, tipo, 0.05, to colocando
 						# maior pra ele explorar mais por ora
         random_number = np.random.random()
         if random_number < epsilon:
@@ -348,31 +359,44 @@ class R2AQLearning(IR2A):
 	# max_b(s',b) - Q(s,a)] - Bellman Equation
 	
     def exploration_choose_qi(self):
-        print('         ||>>> em exploration')
+        #print('         ||>>> em exploration')
 	
 		#Qualidade que vou pedir na proxima requisicao
         random_number = random.randrange(0,self.N,1)
 			
-        print('Qualidade escolhida: ', random_number)
+        #print('Qualidade escolhida: ', random_number)
         return random_number
 		
     def exploration_update_q_table(self):
-        print('Recompensa: ', self.total_reward())
+        #print('Recompensa: ', self.total_reward())
+
 		# Preciso ver qual estado eu tava, pegar qual o valor Q
 		# atual desse estado na tabela Q, e fazer o calculo
 		# da equacao de Bellman. Pra isso, preciso ter o estado 
 		# anterior: self.last_state.
         indice1 = self.N*self.last_state[1] + self.last_state[0] #linha da tabela = N*BW + qi
-        indice2 = self.last_state[0] #coluna da tabela = qualidade
+        indice2 = self.qi_request #coluna da tabela = qualidade
         indice3 = self.N*self.state[1] + self.state[0] #linha da tabela = N*BW + qi
 		# Dificuldade agora: termo max_b(s',b)
         self.q_table[indice1][indice2] = self.q_table[indice1][indice2]+self.alfa*(self.total_reward()+self.gama*np.max(self.q_table[indice3,:]) - self.q_table[indice1][indice2])
-	
+
+        
+
+
 	######################## Exploitation ########################
 	
     def exploitation(self):
-        print('         ||>>> em exploitation')
-        indice1 = self.last_state[0]*self.last_state[1] + self.last_state[0] #linha da tabela = BW*qi + qi
-        indice2 = self.last_state[0] #coluna da tabela = qualidade
-        return 0 #Mudar para a qualidade que escolheu pela tabela (maior valor da linha)
+        #print('         ||>>> em exploitation')
+        indice1 = self.N*self.last_state[1] + self.last_state[0] #linha da tabela = N*BW + qi
+        #indice2 = self.last_state[0] #coluna da tabela = qualidade
+
+        #print('Tabela: \n')
+        #for i in range(self.N*5):
+        #    print(i, ':', self.q_table[i, :])
+
+        
+        valor_maximo = np.max(self.q_table[indice1,:])
+        indice = np.where(self.q_table[indice1,:] == valor_maximo)
+        indice_coluna = int(indice[0][0])
+        return indice_coluna
 	# so usa a tabela Q
