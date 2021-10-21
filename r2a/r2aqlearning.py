@@ -178,7 +178,7 @@ class R2AQLearning(IR2A):
        	    self.buffer_anterior = self.buffer_atual
             self.buffer_atual = self.whiteboard.get_playback_buffer_size()[-1][1]
 
-        print(self.vector_qi)
+        #print(self.vector_qi)
 		
         #if len(self.whiteboard.get_playback_history())!=0:
         #    print('        whiteboard.get_playback_history(): ',self.whiteboard.get_playback_history())
@@ -314,15 +314,16 @@ class R2AQLearning(IR2A):
 	# R - total reward
     def total_reward(self):
         r_quality = self.reward_quality()
-        #print('Recompensa qualidade: ', r_quality)
+        print('Recompensa qualidade: ', r_quality)
         r_oscillation = self.reward_oscillation()
-        #print('Recompensa oscilacao: ', r_oscillation)
+        print('Recompensa oscilacao: ', r_oscillation)
         r_bufferfilling = self.reward_bufferfilling()
-        #print('Recompensa bufferfilling: ', r_bufferfilling)
+        print('Recompensa bufferfilling: ', r_bufferfilling)
         r_bufferchange = self.reward_bufferchange()
-        #print('Recompensa bufferchange: ', r_bufferchange)
+        print('Recompensa bufferchange: ', r_bufferchange)
 		
         reward = self.C1*r_quality + self.C2*r_oscillation + self.C3*r_bufferfilling + self.C4*r_bufferchange
+        print('Recompensa total: ', reward)
         return reward
 	
 	##############################################################
@@ -342,7 +343,7 @@ class R2AQLearning(IR2A):
 	####################### Using ε-greedy #######################
     def e_greedy(self):
 		# Exploration rate (ε)
-        epsilon = 1.0 	# Costuma ser bem baixo, tipo, 0.05, to colocando
+        epsilon = 0.5 	# Costuma ser bem baixo, tipo, 0.05, to colocando
 						# maior pra ele explorar mais por ora
         random_number = np.random.random()
         if random_number < epsilon:
@@ -359,7 +360,7 @@ class R2AQLearning(IR2A):
 	# max_b(s',b) - Q(s,a)] - Bellman Equation
 	
     def exploration_choose_qi(self):
-        #print('         ||>>> em exploration')
+        print('         ||>>> em exploration')
 	
 		#Qualidade que vou pedir na proxima requisicao
         random_number = random.randrange(0,self.N,1)
@@ -368,7 +369,7 @@ class R2AQLearning(IR2A):
         return random_number
 		
     def exploration_update_q_table(self):
-        #print('Recompensa: ', self.total_reward())
+        print('Atualizando a tabela Q')
 
 		# Preciso ver qual estado eu tava, pegar qual o valor Q
 		# atual desse estado na tabela Q, e fazer o calculo
@@ -386,17 +387,17 @@ class R2AQLearning(IR2A):
 	######################## Exploitation ########################
 	
     def exploitation(self):
-        #print('         ||>>> em exploitation')
-        indice1 = self.N*self.last_state[1] + self.last_state[0] #linha da tabela = N*BW + qi
+        print('         ||>>> em exploitation')
+        indice1 = self.N*self.state[1] + self.state[0] #linha da tabela = N*BW + qi
         #indice2 = self.last_state[0] #coluna da tabela = qualidade
 
         #print('Tabela: \n')
         #for i in range(self.N*5):
         #    print(i, ':', self.q_table[i, :])
 
-        
+        print('Estado: ', self.state, '   Linha da tabela: ', indice1)
+		
         valor_maximo = np.max(self.q_table[indice1,:])
         indice = np.where(self.q_table[indice1,:] == valor_maximo)
         indice_coluna = int(indice[0][0])
         return indice_coluna
-	# so usa a tabela Q
