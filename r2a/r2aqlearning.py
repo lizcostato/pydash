@@ -88,8 +88,8 @@ class R2AQLearning(IR2A):
 
 
     #Pegando tabela Q do arquivo qtable.txt
-        self.q_table = np.loadtxt('q_table.txt')
-        print(self.q_table)
+        self.q_table = np.loadtxt('q_table_inerval_100_profile_LMH.txt')
+        #print(self.q_table)
 
 
     def handle_xml_request(self, msg):
@@ -212,9 +212,9 @@ class R2AQLearning(IR2A):
     	pass
 
     def finalization(self):
-        np.savetxt("q_table.txt", self.q_table)
+        np.savetxt("q_table_inerval_100_profile_LMH.txt", self.q_table)
 
-       # pass
+    	#pass
 		
 	##############################################################
 	#########                   Q-table                  #########
@@ -239,7 +239,7 @@ class R2AQLearning(IR2A):
 	
 	# Knowing how many states exist, initialize the Q-table with 0
     #def create_q_table(self):
-    #    self.q_table = np.zeros((5*self.N, self.N)) #5 faixas de bandwidth
+        #self.q_table = np.zeros((5*self.N, self.N)) #5 faixas de bandwidth
 	
 
 	##############################################################
@@ -343,7 +343,7 @@ class R2AQLearning(IR2A):
 	####################### Using ε-greedy #######################
     def e_greedy(self):
 		# Exploration rate (ε)
-        epsilon = 1 	# Costuma ser bem baixo, tipo, 0.05, to colocando
+        epsilon = 0.05 	# Costuma ser bem baixo, tipo, 0.05, to colocando
 						# maior pra ele explorar mais por ora
         random_number = np.random.random()
         if random_number < epsilon:
